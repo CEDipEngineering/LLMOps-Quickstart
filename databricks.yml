@@ -1,0 +1,43 @@
+bundle:
+  name: llmops-quickstart
+
+include:
+  - resources/*.yml
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://fevm-cedip-fevm-aws-classic-stable.cloud.databricks.com
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog_name: cedip_fevm_aws_classic_stable_catalog
+      schema_name: llmops_quickstart
+      model_name: support_ticket_classifier
+      environment: dev
+
+  prod:
+    mode: production
+    workspace:
+      host: https://fevm-cedip-fevm-aws-classic-stable.cloud.databricks.com
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog_name: cedip_fevm_aws_classic_stable_catalog
+      schema_name: llmops_quickstart_prod
+      model_name: support_ticket_classifier
+      environment: prod
+
+variables:
+  catalog_name:
+    description: "Unity Catalog catalog name"
+    default: cedip_fevm_aws_classic_stable_catalog
+  schema_name:
+    description: "Unity Catalog schema name"
+    default: llmops_quickstart
+  model_name:
+    description: "Registered model name in Unity Catalog"
+    default: support_ticket_classifier
+  environment:
+    description: "Deployment environment (dev/prod)"
+    default: dev
