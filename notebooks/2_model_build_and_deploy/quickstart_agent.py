@@ -6,7 +6,8 @@ import mlflow
 from mlflow.pyfunc import ChatAgent
 from mlflow.types.agent import ChatAgentMessage, ChatAgentResponse, ChatContext
 
-LLM_ENDPOINT_NAME = "databricks-claude-sonnet-4-6"
+config = mlflow.models.ModelConfig(development_config="model_config.yml")
+LLM_ENDPOINT_NAME = config.get("llm_endpoint")
 
 openai_client = WorkspaceClient().serving_endpoints.get_open_ai_client()
 

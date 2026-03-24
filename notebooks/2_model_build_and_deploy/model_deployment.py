@@ -12,7 +12,7 @@
 
 # COMMAND ----------
 
-dbutils.widgets.text("catalog_name", "cedip_fevm_aws_classic_stable_catalog")
+dbutils.widgets.text("catalog_name", "main")
 dbutils.widgets.text("schema_name", "llmops_quickstart")
 dbutils.widgets.text("model_name", "support_ticket_classifier")
 dbutils.widgets.text("experiment_name", f"/Users/{dbutils.notebook.entry_point.getDbutils().notebook().getContext().userName().get()}/llmops_quickstart")

@@ -11,15 +11,17 @@
 
 # COMMAND ----------
 
-dbutils.widgets.text("catalog_name", "cedip_fevm_aws_classic_stable_catalog")
+dbutils.widgets.text("catalog_name", "main")
 dbutils.widgets.text("schema_name", "llmops_quickstart")
 dbutils.widgets.text("model_name", "support_ticket_classifier")
 dbutils.widgets.text("experiment_name", f"/Users/{dbutils.notebook.entry_point.getDbutils().notebook().getContext().userName().get()}/llmops_quickstart")
+dbutils.widgets.text("llm_endpoint", "databricks-claude-sonnet-4-6")
 
 catalog_name = dbutils.widgets.get("catalog_name")
 schema_name = dbutils.widgets.get("schema_name")
 model_name = dbutils.widgets.get("model_name")
 experiment_name = dbutils.widgets.get("experiment_name")
+llm_endpoint = dbutils.widgets.get("llm_endpoint")
 
 registered_model_name = f"{catalog_name}.{schema_name}.{model_name}"
 
@@ -36,16 +38,17 @@ from mlflow.models.resources import DatabricksServingEndpoint
 mlflow.set_registry_uri("databricks-uc")
 mlflow.set_experiment(experiment_name)
 
-LLM_ENDPOINT_NAME = "databricks-claude-sonnet-4-6"
-resources = [DatabricksServingEndpoint(endpoint_name=LLM_ENDPOINT_NAME)]
+resources = [DatabricksServingEndpoint(endpoint_name=llm_endpoint)]
 
 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
-# quickstart_agent.py lives in the same directory as this notebook
+# quickstart_agent.py lives in the same directory as this notebook.
+# model_config is written into the artifact so the agent reads llm_endpoint at serving time.
 with mlflow.start_run(run_name=f"build_{timestamp}") as run:
     logged_model_info = mlflow.pyfunc.log_model(
         artifact_path="agent",
         python_model="quickstart_agent.py",
+        model_config={"llm_endpoint": llm_endpoint},
         resources=resources,
         pip_requirements=[
             "mlflow",

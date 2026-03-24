@@ -20,6 +20,8 @@ resources:
           default: "${var.schema_name}"
         - name: model_name
           default: "${var.model_name}"
+        - name: llm_endpoint
+          default: "${var.llm_endpoint}"
         - name: experiment_name
           default: "${resources.experiments.llmops_experiment.name}"
         - name: accuracy_threshold
@@ -34,6 +36,7 @@ resources:
               catalog_name: "{{job.parameters.catalog_name}}"
               schema_name: "{{job.parameters.schema_name}}"
               model_name: "{{job.parameters.model_name}}"
+              llm_endpoint: "{{job.parameters.llm_endpoint}}"
               experiment_name: "{{job.parameters.experiment_name}}"
 
         - task_key: model_evaluation

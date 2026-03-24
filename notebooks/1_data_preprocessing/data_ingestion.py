@@ -11,7 +11,7 @@
 
 # COMMAND ----------
 
-dbutils.widgets.text("catalog_name", "cedip_fevm_aws_classic_stable_catalog")
+dbutils.widgets.text("catalog_name", "main")
 dbutils.widgets.text("schema_name", "llmops_quickstart")
 catalog_name = dbutils.widgets.get("catalog_name")
 schema_name = dbutils.widgets.get("schema_name")
