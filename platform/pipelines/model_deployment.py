@@ -46,7 +46,10 @@ print(f"Deploying {registered_model_name} v{champion.version} (Champion)")
 existing = get_deployments(model_name=registered_model_name)
 for d in existing:
     print(f"Removing existing deployment: {d.endpoint_name}")
-    delete_deployment(model_name=registered_model_name, model_version=d.model_version)
+    try:
+        delete_deployment(model_name=registered_model_name, model_version=d.model_version)
+    except ValueError:
+        print(f"  Skipped (failed or already removed): v{d.model_version}")
 
 deployment = agents.deploy(
     model_name=registered_model_name,
