@@ -4,7 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Purpose
 
-A minimal but complete **LLMOps Quickstart** for Databricks. Demonstrates the full lifecycle of an LLM-powered application: data ingestion → agent build → evaluation → deployment → inference.
+A minimal but complete **LLMOps Quickstart** for Databricks, designed for **regulated industries** where developers are constrained to only interact with the core agent — not the automation pipelines, evaluation workflows, or deployment infrastructure.
+
+The project is split into two zones:
+- **`developer/`** — developers edit only these files (agent code, eval data, config contract)
+- **`platform/`** — ops-managed pipelines and job resources that developers never touch
 
 Use case: **Customer support ticket classifier** — a `ChatAgent` that classifies free-text support tickets into five categories (`billing`, `technical_issue`, `feature_request`, `account_management`, `other`).
 
@@ -36,7 +40,7 @@ Reference repos: [MLOps Quickstart](https://github.com/databricks-solutions/mlop
 3. **Deploy and run**:
    ```bash
    databricks bundle deploy
-   databricks bundle run data_preprocessing_job
+   databricks bundle run data_ingestion_job
    databricks bundle run model_build_evaluation_job
    databricks bundle run model_deployment_job
    databricks bundle run batch_inference_job
@@ -52,7 +56,7 @@ databricks bundle validate
 databricks bundle deploy
 
 # Run jobs individually
-databricks bundle run data_preprocessing_job
+databricks bundle run data_ingestion_job
 databricks bundle run model_build_evaluation_job
 databricks bundle run model_deployment_job
 databricks bundle run batch_inference_job
@@ -67,36 +71,53 @@ databricks --profile <profile> bundle deploy
 ## Architecture
 
 ```
-notebooks/
-  1_data_preprocessing/
-    data_ingestion.py         # Creates support_tickets Delta table
-  2_model_build_and_deploy/
-    quickstart_agent.py       # ChatAgent definition (logged as MLflow model artifact)
-    model_config.yml          # Default model config (llm_endpoint); overridden at log time
-    model_build.py            # Logs agent to MLflow, passes run_id downstream
-    model_evaluation.py       # Loads agent, runs predictions, logs accuracy; promotes to Champion
-    model_deployment.py       # Deploys Champion to Mosaic AI Model Serving via agents.deploy()
-  3_inference/
-    batch_inference.py        # Loads Champion, runs over all tickets, writes inference_results
-    realtime_inference.py     # Queries the serving endpoint via OpenAI-compatible API
-resources/
-  model_artifacts.yml         # UC schema + MLflow experiment
-  1_data_preprocessing_job.yml
-  2_1_model_build_evaluation_job.yml
-  2_2_model_deployment_job.yml
-  3_batch_inference_job.yml
-databricks.yml                # Bundle targets (dev/prod) + variables — no hard-coded host or catalog
+developer/                        # ← DEVELOPERS EDIT HERE ONLY
+  agent_config.yml                # Interface contract between developer/ and platform/
+  agent/
+    agent.py                      # ChatAgent definition (logged as MLflow model artifact)
+    model_config.yml              # Default model config (llm_endpoint) for local dev
+  eval/
+    eval_data.py                  # Evaluation dataset notebook (standardized schema)
+
+platform/                         # ← DEVELOPERS DO NOT TOUCH
+  pipelines/
+    model_build.py                # Generic: reads agent path + config from agent_config.yml
+    model_evaluation.py           # Generic: uses input/expected_output contract
+    model_deployment.py           # Deploys Champion to Mosaic AI Model Serving
+    batch_inference.py            # Generic: reads table/column names from agent_config.yml
+    realtime_inference.py         # Queries the serving endpoint via OpenAI-compatible API
+  resources/
+    model_artifacts.yml           # UC schema + MLflow experiment
+    1_data_ingestion_job.yml
+    2_1_model_build_evaluation_job.yml
+    2_2_model_deployment_job.yml
+    3_batch_inference_job.yml
+
+databricks.yml                    # Bundle targets (dev/prod) + variables
 ```
+
+### Interface contract: `developer/agent_config.yml`
+
+This YAML file is the single bridge between zones. The developer sets:
+- **`agent.file`** — path to their ChatAgent python file (relative to `developer/`)
+- **`agent.extra_pip_requirements`** — additional pip packages the agent needs
+- **`model_config`** — key-value pairs baked into the MLflow artifact (e.g. `llm_endpoint`)
+- **`eval`** — table name, column names (`input`, `expected_output`), and accuracy threshold
+- **`inference`** — input/output table names and column names
+
+Platform pipelines read this config at runtime via `yaml.safe_load()`.
 
 ### Key design decisions
 
-- **No hard-coded workspace host** — `databricks.yml` omits `workspace.host`; the CLI profile or `--profile` flag supplies it, making the bundle portable across workspaces.
-- **`catalog_name` defaults to `main`** — present in every Databricks workspace. Override with `-v catalog_name=...`.
-- **`llm_endpoint` is a bundle variable** — flows from `databricks.yml` → job parameter → `model_build.py` → `mlflow.pyfunc.log_model(model_config=...)`. The agent reads it at serving time via `mlflow.models.ModelConfig`.
-- **`model_config.yml`** lives alongside `quickstart_agent.py` for interactive/dev use; at log time the value is baked into the MLflow artifact so the serving endpoint uses the correct endpoint.
-- **`quickstart_agent.py`** lives alongside the build notebook so `python_model="quickstart_agent.py"` resolves correctly as a relative path at log time.
-- **Serverless Environment v5** is forced in every job resource via `environments[].spec.environment_version: "5"`. This provides `mlflow`, `databricks-agents`, `databricks-sdk`, and `pydantic 2.10.6` pre-installed. Only `databricks-openai` (not in v5) is added as a dependency.
+- **Developer/platform separation** — developers only edit files in `developer/`. Platform pipelines in `platform/` are generic and work with any MLflow `ChatAgent`.
+- **`agent_config.yml` as the interface** — single source of truth for agent-specific configuration. Platform notebooks read it at runtime, avoiding duplication of config values as bundle variables.
+- **Standardized eval schema** — evaluation dataset must have `input` (agent input text) and `expected_output` (expected response) columns. Platform evaluation is use-case-agnostic.
+- **`llm_endpoint` dual authority** — `agent_config.yml` has the development default; the bundle variable (which varies per target) is authoritative at pipeline time.
+- **`bundle_root` widget** — platform notebooks receive `${workspace.root_path}/files` as a job parameter to reliably resolve `agent_config.yml` in the workspace file system.
+- **No hard-coded workspace host** — `databricks.yml` omits `workspace.host`; the CLI profile supplies it.
+- **`catalog_name` defaults to `main`** — present in every Databricks workspace.
+- **Serverless Environment v5** — all jobs use it. `pyyaml` is added where config parsing is needed. `databricks-openai` is added where agent interaction occurs.
 - **No `%pip install`** in any notebook — all dependencies come from the job environment spec.
-- **Champion alias** gates deployment: `model_evaluation.py` only sets the `Champion` alias if `eval/accuracy >= accuracy_threshold` (default 0.8). `model_deployment.py` always deploys whatever version carries the `Champion` alias.
-- **Task values** pass `logged_run_id` from `model_build` → `model_evaluation` via `dbutils.jobs.taskValues`.
-- **Schema creation** is handled both by the bundle (`model_artifacts.yml` schema resource) and defensively in `data_ingestion.py` (`CREATE SCHEMA IF NOT EXISTS`).
+- **Champion alias** gates deployment: `model_evaluation.py` only sets the alias if accuracy >= threshold. `model_deployment.py` deploys whatever version carries the alias.
+- **Task values** pass `logged_run_id` from `model_build` → `model_evaluation`.
+- **Schema creation** is handled both by the bundle (`model_artifacts.yml`) and defensively in `eval_data.py`.

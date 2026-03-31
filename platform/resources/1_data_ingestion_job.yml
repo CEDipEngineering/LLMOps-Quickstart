@@ -1,8 +1,8 @@
 resources:
   jobs:
-    data_preprocessing_job:
-      name: "LLMOps Quickstart - 1. Data Preprocessing [${var.environment}]"
-      description: "Ingests sample support tickets into Unity Catalog."
+    data_ingestion_job:
+      name: "LLMOps - 1. Data Ingestion [${var.environment}]"
+      description: "Runs the developer-owned evaluation data notebook to create the eval dataset."
 
       environments:
         - environment_key: default
@@ -19,7 +19,7 @@ resources:
         - task_key: data_ingestion
           environment_key: default
           notebook_task:
-            notebook_path: "../notebooks/1_data_preprocessing/data_ingestion.py"
+            notebook_path: "../../developer/eval/eval_data.py"
             base_parameters:
               catalog_name: "{{job.parameters.catalog_name}}"
               schema_name: "{{job.parameters.schema_name}}"

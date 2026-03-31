@@ -4,10 +4,11 @@
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC # Data Ingestion
+# MAGIC # Evaluation Dataset
 # MAGIC
-# MAGIC Creates sample customer support tickets in a Unity Catalog Delta table.
-# MAGIC These records serve as both the evaluation dataset and batch inference input.
+# MAGIC Creates the evaluation dataset in a Unity Catalog Delta table.
+# MAGIC The table must contain at minimum an `input` column (text sent to the agent)
+# MAGIC and an `expected_output` column (the expected response for comparison).
 
 # COMMAND ----------
 
@@ -26,11 +27,15 @@ spark.sql(f"CREATE SCHEMA IF NOT EXISTS {catalog_name}.{schema_name}")
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ## Create support tickets table
+# MAGIC ## Create evaluation dataset
+# MAGIC
+# MAGIC Each row has an `input` (the text the agent will classify) and an
+# MAGIC `expected_output` (the correct label).  Additional columns like `id` are
+# MAGIC optional and ignored by the platform pipelines.
 
 # COMMAND ----------
 
-tickets = [
+data = [
     # billing
     (1,  "I was charged twice for my subscription last month. Please refund the extra charge.", "billing"),
     (2,  "My invoice shows a different amount than what I was quoted. Can you explain the discrepancy?", "billing"),
@@ -72,17 +77,17 @@ from pyspark.sql.types import StructType, StructField, IntegerType, StringType
 
 schema = StructType([
     StructField("id", IntegerType(), False),
-    StructField("ticket", StringType(), False),
-    StructField("category", StringType(), False),
+    StructField("input", StringType(), False),
+    StructField("expected_output", StringType(), False),
 ])
 
-df = spark.createDataFrame(tickets, schema=schema)
+df = spark.createDataFrame(data, schema=schema)
 
-df.write.mode("overwrite").saveAsTable(f"{catalog_name}.{schema_name}.support_tickets")
+df.write.mode("overwrite").saveAsTable(f"{catalog_name}.{schema_name}.eval_dataset")
 
-display(spark.read.table(f"{catalog_name}.{schema_name}.support_tickets"))
+display(spark.read.table(f"{catalog_name}.{schema_name}.eval_dataset"))
 
 # COMMAND ----------
 
-print(f"Created table: {catalog_name}.{schema_name}.support_tickets")
-print(f"Row count: {spark.read.table(f'{catalog_name}.{schema_name}.support_tickets').count()}")
+print(f"Created table: {catalog_name}.{schema_name}.eval_dataset")
+print(f"Row count: {spark.read.table(f'{catalog_name}.{schema_name}.eval_dataset').count()}")

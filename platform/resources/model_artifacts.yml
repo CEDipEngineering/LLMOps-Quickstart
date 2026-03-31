@@ -3,7 +3,7 @@ resources:
     llmops_schema:
       catalog_name: "${var.catalog_name}"
       name: "${var.schema_name}"
-      comment: "LLMOps Quickstart schema — support ticket classification"
+      comment: "LLMOps Quickstart schema"
 
   experiments:
     llmops_experiment:

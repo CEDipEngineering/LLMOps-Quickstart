@@ -1,13 +1,13 @@
 # Databricks notebook source
 # Uses Databricks Serverless Environment v5 (configured in job resource YAML).
-# databricks-openai is added via the job's environment spec; no %pip install needed here.
+# databricks-openai is added via the job's environment spec.
 
 # COMMAND ----------
 # MAGIC %md
 # MAGIC # Model Deployment
 # MAGIC
 # MAGIC Deploys the **Champion** model version to a Mosaic AI Model Serving endpoint
-# MAGIC using `databricks.agents.deploy`. If an endpoint already exists, it is updated
+# MAGIC using `databricks.agents.deploy`.  If an endpoint already exists, it is updated
 # MAGIC in-place.
 
 # COMMAND ----------

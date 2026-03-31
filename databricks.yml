@@ -2,7 +2,7 @@ bundle:
   name: llmops-quickstart
 
 include:
-  - resources/*.yml
+  - platform/resources/*.yml
 
 workspace:
   root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}

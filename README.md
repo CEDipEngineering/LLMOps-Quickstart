@@ -1,6 +1,6 @@
 # LLMOps Quickstart for Databricks
 
-A minimal but complete end-to-end LLMOps example on Databricks, demonstrating the full lifecycle of an LLM-powered application:
+A minimal but complete end-to-end LLMOps example on Databricks, designed for **regulated industries** where developers are constrained to only interact with the core agent — not the automation pipelines, evaluation workflows, or deployment infrastructure.
 
 **Data Ingestion → Agent Build → Evaluation → Deployment → Inference**
 
@@ -50,8 +50,8 @@ This creates the Unity Catalog schema, MLflow experiment, and all jobs in your w
 Run each job in order:
 
 ```bash
-# Step 1 — ingest sample support tickets into a Delta table
-databricks bundle run data_preprocessing_job
+# Step 1 — ingest evaluation dataset into a Delta table
+databricks bundle run data_ingestion_job
 
 # Step 2 — build and evaluate the classifier; promote to Champion if accuracy >= 80%
 databricks bundle run model_build_evaluation_job
@@ -59,7 +59,7 @@ databricks bundle run model_build_evaluation_job
 # Step 3 — deploy the Champion model to a Model Serving endpoint
 databricks bundle run model_deployment_job
 
-# Step 4 — run batch inference over all tickets
+# Step 4 — run batch inference over the input table
 databricks bundle run batch_inference_job
 ```
 
@@ -67,7 +67,9 @@ databricks bundle run batch_inference_job
 
 ## Configuration
 
-All configuration is exposed as bundle variables with sensible defaults. No edits to source files are needed for most workspaces.
+### Bundle variables
+
+Infrastructure-level settings exposed as bundle variables with sensible defaults:
 
 | Variable | Default | Description |
 |---|---|---|
@@ -84,13 +86,15 @@ databricks bundle deploy \
   -v llm_endpoint=databricks-meta-llama-3-3-70b-instruct
 ```
 
-Or add persistent overrides to `databricks.yml` under the target's `variables:` block.
+### Agent configuration
+
+Agent-specific settings live in [`developer/agent_config.yml`](developer/agent_config.yml) — the interface contract between the developer and platform zones. See the file for full documentation.
 
 ### Production target
 
 ```bash
 databricks bundle deploy --target prod
-databricks bundle run --target prod data_preprocessing_job
+databricks bundle run --target prod data_ingestion_job
 # ... etc.
 ```
 
@@ -100,34 +104,49 @@ The `prod` target uses `llmops_quickstart_prod` as the schema name.
 
 ## Project Structure
 
+The project enforces a clear separation between **developer-owned** and **platform-owned** code:
+
 ```
-notebooks/
-  1_data_preprocessing/
-    data_ingestion.py         # Creates support_tickets Delta table (30 labelled rows)
-  2_model_build_and_deploy/
-    quickstart_agent.py       # MLflow ChatAgent definition
-    model_config.yml          # Default agent config (llm_endpoint)
-    model_build.py            # Logs agent to MLflow
-    model_evaluation.py       # Evaluates agent; promotes to Champion if accuracy >= threshold
-    model_deployment.py       # Deploys Champion to Mosaic AI Model Serving
-  3_inference/
-    batch_inference.py        # Batch predictions written to inference_results table
-    realtime_inference.py     # Live queries via OpenAI-compatible API
-resources/
-  model_artifacts.yml         # UC schema + MLflow experiment resources
-  1_data_preprocessing_job.yml
-  2_1_model_build_evaluation_job.yml
-  2_2_model_deployment_job.yml
-  3_batch_inference_job.yml
-databricks.yml                # Bundle entry point — targets, variables
+developer/                        ← DEVELOPERS EDIT HERE ONLY
+  agent_config.yml                  Interface contract (agent path, eval schema, thresholds)
+  agent/
+    agent.py                        MLflow ChatAgent definition
+    model_config.yml                Default agent config for local dev (llm_endpoint)
+  eval/
+    eval_data.py                    Evaluation dataset notebook (standardized schema)
+
+platform/                         ← DEVELOPERS DO NOT TOUCH
+  pipelines/
+    model_build.py                  Generic: reads agent path + config from agent_config.yml
+    model_evaluation.py             Generic: uses input/expected_output contract
+    model_deployment.py             Deploys Champion to Mosaic AI Model Serving
+    batch_inference.py              Generic: reads table/column names from agent_config.yml
+    realtime_inference.py           Queries serving endpoint via OpenAI-compatible API
+  resources/
+    model_artifacts.yml             UC schema + MLflow experiment resources
+    1_data_ingestion_job.yml
+    2_1_model_build_evaluation_job.yml
+    2_2_model_deployment_job.yml
+    3_batch_inference_job.yml
+
+databricks.yml                    Bundle entry point — targets, variables
 ```
+
+### Developer workflow
+
+Developers only need to:
+
+1. **Define their agent** in `developer/agent/agent.py` (must extend MLflow `ChatAgent`)
+2. **Provide evaluation data** in `developer/eval/eval_data.py` (must write a table with `input` and `expected_output` columns)
+3. **Configure the contract** in `developer/agent_config.yml` (agent file path, eval schema, thresholds)
+4. **Deploy and run** the standard pipeline commands
 
 ---
 
 ## How It Works
 
-1. **Data Ingestion** — 30 hand-labelled support tickets (6 per category) are written to a Delta table in Unity Catalog.
-2. **Model Build** — `quickstart_agent.py` is logged as an MLflow `ChatAgent` model. The configured LLM endpoint is baked into the model artifact via `mlflow.models.ModelConfig`.
-3. **Evaluation** — The logged agent runs predictions on all 30 tickets. If accuracy meets the threshold (default 80%), the model is registered in Unity Catalog and aliased as **Champion**.
+1. **Data Ingestion** — The developer-owned `eval_data.py` notebook writes labelled evaluation data to a Delta table with standardized `input` and `expected_output` columns.
+2. **Model Build** — The platform reads `agent_config.yml` to locate the agent file, then logs it as an MLflow `ChatAgent` model. The configured LLM endpoint is baked into the model artifact via `mlflow.models.ModelConfig`.
+3. **Evaluation** — The platform loads the logged agent and runs predictions against the evaluation dataset. If accuracy meets the threshold defined in `agent_config.yml` (default 80%), the model is registered in Unity Catalog and aliased as **Champion**.
 4. **Deployment** — The Champion model version is deployed to a Mosaic AI Model Serving endpoint via `databricks.agents.deploy()`.
-5. **Inference** — Batch inference loads the Champion model directly; real-time inference queries the serving endpoint via the OpenAI-compatible API.
+5. **Inference** — Batch inference reads the input table from `agent_config.yml` and writes predictions to the output table. Real-time inference queries the serving endpoint via the OpenAI-compatible API.

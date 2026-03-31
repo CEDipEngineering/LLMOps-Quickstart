@@ -1,15 +1,15 @@
 resources:
   jobs:
-    model_deployment_job:
-      name: "LLMOps Quickstart - 2.2 Model Deployment [${var.environment}]"
-      description: "Deploys the Champion model version to a Mosaic AI Model Serving endpoint."
+    batch_inference_job:
+      name: "LLMOps - 3. Batch Inference [${var.environment}]"
+      description: "Runs the Champion model over the input table and writes predictions to a results table."
 
       environments:
         - environment_key: default
           spec:
             environment_version: "5"
             dependencies:
-              - "databricks-openai"
+              - "pyyaml"
 
       parameters:
         - name: catalog_name
@@ -18,19 +18,19 @@ resources:
           default: "${var.schema_name}"
         - name: model_name
           default: "${var.model_name}"
-        - name: experiment_name
-          default: "${resources.experiments.llmops_experiment.name}"
+        - name: bundle_root
+          default: "${workspace.root_path}/files"
 
       tasks:
-        - task_key: model_deployment
+        - task_key: batch_inference
           environment_key: default
           notebook_task:
-            notebook_path: "../notebooks/2_model_build_and_deploy/model_deployment.py"
+            notebook_path: "../pipelines/batch_inference.py"
             base_parameters:
               catalog_name: "{{job.parameters.catalog_name}}"
               schema_name: "{{job.parameters.schema_name}}"
               model_name: "{{job.parameters.model_name}}"
-              experiment_name: "{{job.parameters.experiment_name}}"
+              bundle_root: "{{job.parameters.bundle_root}}"
 
       timeout_seconds: 3600
       max_concurrent_runs: 1

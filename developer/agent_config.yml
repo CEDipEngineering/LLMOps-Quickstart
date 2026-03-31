@@ -1,0 +1,36 @@
+# ---------------------------------------------------------------------------
+# Agent Configuration Contract
+# ---------------------------------------------------------------------------
+# This file is the interface between the developer/ and platform/ zones.
+# Developers: edit this file to configure your agent for the pipelines.
+# Platform pipelines read these values at runtime — you should not need to
+# modify anything outside the developer/ directory.
+# ---------------------------------------------------------------------------
+
+# --- Agent Definition ---
+agent:
+  # Path to the ChatAgent python file, relative to the developer/ directory.
+  file: "agent/agent.py"
+  # Pip packages beyond what Serverless Environment v5 provides.
+  extra_pip_requirements:
+    - "databricks-openai"
+
+# --- Model Config ---
+# Key-value pairs baked into the MLflow artifact at log time.
+# The agent reads them at serving time via mlflow.models.ModelConfig.
+# Note: llm_endpoint may be overridden by the bundle variable per target.
+model_config:
+  llm_endpoint: "databricks-claude-sonnet-4-6"
+
+# --- Evaluation ---
+eval:
+  table_name: "eval_dataset"               # Without catalog.schema prefix
+  input_column: "input"                     # Column with the text sent to the agent
+  expected_output_column: "expected_output"  # Column with the expected response
+  accuracy_threshold: 0.8                   # Minimum accuracy to promote to Champion
+
+# --- Inference ---
+inference:
+  input_table: "eval_dataset"              # Table to run batch inference over
+  input_column: "input"                     # Column containing agent input text
+  output_table: "inference_results"         # Table to write predictions to

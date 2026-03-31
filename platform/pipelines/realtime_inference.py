@@ -7,25 +7,41 @@
 # MAGIC # Realtime Inference
 # MAGIC
 # MAGIC Demonstrates querying the deployed Model Serving endpoint directly via the
-# MAGIC OpenAI-compatible REST API using the Databricks SDK.
-
-# COMMAND ----------
+# MAGIC OpenAI-compatible REST API using the Databricks SDK.  Sample inputs are read
+# MAGIC from the evaluation dataset defined in `developer/agent_config.yml`.
 
 # COMMAND ----------
 
 dbutils.widgets.text("catalog_name", "main")
 dbutils.widgets.text("schema_name", "llmops_quickstart")
 dbutils.widgets.text("model_name", "support_ticket_classifier")
+dbutils.widgets.text("bundle_root", "")
 
 catalog_name = dbutils.widgets.get("catalog_name")
 schema_name = dbutils.widgets.get("schema_name")
 model_name = dbutils.widgets.get("model_name")
+bundle_root = dbutils.widgets.get("bundle_root")
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ## Discover endpoint name from the deployed Champion
+# MAGIC ## Load agent configuration and discover endpoint
 
 # COMMAND ----------
+
+import yaml
+import os
+
+if bundle_root:
+    config_path = os.path.join(bundle_root, "developer", "agent_config.yml")
+else:
+    config_path = os.path.join(os.path.dirname(__file__), "..", "..", "developer", "agent_config.yml")
+
+with open(config_path) as f:
+    agent_config = yaml.safe_load(f)
+
+eval_cfg = agent_config["eval"]
+eval_table = eval_cfg["table_name"]
+input_column = eval_cfg["input_column"]
 
 from databricks.agents import get_deployments
 import mlflow
@@ -42,7 +58,7 @@ print(f"Using endpoint: {endpoint_name}")
 
 # COMMAND ----------
 # MAGIC %md
-# MAGIC ## Send a ticket to the endpoint
+# MAGIC ## Send sample inputs to the endpoint
 
 # COMMAND ----------
 
@@ -51,18 +67,14 @@ from databricks.sdk import WorkspaceClient
 client = WorkspaceClient()
 openai_client = client.serving_endpoints.get_open_ai_client()
 
-sample_tickets = [
-    "My API key stopped working after I reset my password.",
-    "I want to add my manager to my account as an admin.",
-    "Please add webhook support so we can trigger workflows automatically.",
-    "I was billed for an annual plan but I selected monthly.",
-    "What time does your support team finish for the day?",
-]
+# Read sample inputs from the evaluation dataset
+sample_df = spark.read.table(f"{catalog_name}.{schema_name}.{eval_table}").limit(5).toPandas()
+sample_inputs = sample_df[input_column].tolist()
 
-for ticket in sample_tickets:
+for text in sample_inputs:
     response = openai_client.chat.completions.create(
         model=endpoint_name,
-        messages=[{"role": "user", "content": ticket}],
+        messages=[{"role": "user", "content": text}],
     )
-    category = response.choices[0].message.content.strip()
-    print(f"[{category:25s}] {ticket}")
+    result = response.choices[0].message.content.strip()
+    print(f"[{result:25s}] {text}")
