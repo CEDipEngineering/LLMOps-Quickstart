@@ -82,8 +82,8 @@ Override variables at deploy time:
 
 ```bash
 databricks bundle deploy \
-  -v catalog_name=my_catalog \
-  -v llm_endpoint=databricks-meta-llama-3-3-70b-instruct
+  --var="catalog_name=my_catalog" \
+  --var="llm_endpoint=databricks-meta-llama-3-3-70b-instruct"
 ```
 
 ### Agent configuration

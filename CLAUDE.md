@@ -34,7 +34,7 @@ Reference repos: [MLOps Quickstart](https://github.com/databricks-solutions/mlop
 
    Override at deploy time:
    ```bash
-   databricks bundle deploy -v catalog_name=my_catalog -v llm_endpoint=databricks-meta-llama-3-3-70b-instruct
+   databricks bundle deploy --var="catalog_name=my_catalog" --var="llm_endpoint=databricks-meta-llama-3-3-70b-instruct"
    ```
 
 3. **Deploy and run**:
