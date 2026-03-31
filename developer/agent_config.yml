@@ -16,11 +16,12 @@ agent:
     - "databricks-openai"
 
 # --- Model Config ---
-# Key-value pairs baked into the MLflow artifact at log time.
-# The agent reads them at serving time via mlflow.models.ModelConfig.
+# These key-value pairs are read by the agent at runtime via
+# mlflow.models.ModelConfig.  During local/interactive development the agent
+# reads them directly from this file.  At log time the platform bakes them
+# into the MLflow artifact so the serving endpoint uses the same values.
 # Note: llm_endpoint may be overridden by the bundle variable per target.
-model_config:
-  llm_endpoint: "databricks-claude-sonnet-4-6"
+llm_endpoint: "databricks-claude-sonnet-4-6"
 
 # --- Evaluation ---
 eval:

@@ -75,7 +75,6 @@ developer/                        # ← DEVELOPERS EDIT HERE ONLY
   agent_config.yml                # Interface contract between developer/ and platform/
   agent/
     agent.py                      # ChatAgent definition (logged as MLflow model artifact)
-    model_config.yml              # Default model config (llm_endpoint) for local dev
   eval/
     eval_data.py                  # Evaluation dataset notebook (standardized schema)
 
@@ -101,7 +100,7 @@ databricks.yml                    # Bundle targets (dev/prod) + variables
 This YAML file is the single bridge between zones. The developer sets:
 - **`agent.file`** — path to their ChatAgent python file (relative to `developer/`)
 - **`agent.extra_pip_requirements`** — additional pip packages the agent needs
-- **`model_config`** — key-value pairs baked into the MLflow artifact (e.g. `llm_endpoint`)
+- **`llm_endpoint`** — the Foundation Model API endpoint (top-level key, read by the agent at dev time via `ModelConfig` and baked into the MLflow artifact at log time)
 - **`eval`** — table name, column names (`input`, `expected_output`), and accuracy threshold
 - **`inference`** — input/output table names and column names
 
@@ -112,7 +111,7 @@ Platform pipelines read this config at runtime via `yaml.safe_load()`.
 - **Developer/platform separation** — developers only edit files in `developer/`. Platform pipelines in `platform/` are generic and work with any MLflow `ChatAgent`.
 - **`agent_config.yml` as the interface** — single source of truth for agent-specific configuration. Platform notebooks read it at runtime, avoiding duplication of config values as bundle variables.
 - **Standardized eval schema** — evaluation dataset must have `input` (agent input text) and `expected_output` (expected response) columns. Platform evaluation is use-case-agnostic.
-- **`llm_endpoint` dual authority** — `agent_config.yml` has the development default; the bundle variable (which varies per target) is authoritative at pipeline time.
+- **Single source of truth for `llm_endpoint`** — `agent_config.yml` holds the default; the agent reads it at dev time via `ModelConfig(development_config=...)` and the platform bakes it into the MLflow artifact at log time. The bundle variable can override it per target.
 - **`bundle_root` widget** — platform notebooks receive `${workspace.root_path}/files` as a job parameter to reliably resolve `agent_config.yml` in the workspace file system.
 - **No hard-coded workspace host** — `databricks.yml` omits `workspace.host`; the CLI profile supplies it.
 - **`catalog_name` defaults to `main`** — present in every Databricks workspace.

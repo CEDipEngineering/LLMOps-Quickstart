@@ -111,7 +111,6 @@ developer/                        ← DEVELOPERS EDIT HERE ONLY
   agent_config.yml                  Interface contract (agent path, eval schema, thresholds)
   agent/
     agent.py                        MLflow ChatAgent definition
-    model_config.yml                Default agent config for local dev (llm_endpoint)
   eval/
     eval_data.py                    Evaluation dataset notebook (standardized schema)
 

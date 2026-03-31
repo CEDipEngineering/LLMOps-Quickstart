@@ -6,7 +6,7 @@ import mlflow
 from mlflow.pyfunc import ChatAgent
 from mlflow.types.agent import ChatAgentMessage, ChatAgentResponse, ChatContext
 
-config = mlflow.models.ModelConfig(development_config="model_config.yml")
+config = mlflow.models.ModelConfig(development_config="../agent_config.yml")
 LLM_ENDPOINT_NAME = config.get("llm_endpoint")
 
 openai_client = WorkspaceClient().serving_endpoints.get_open_ai_client()

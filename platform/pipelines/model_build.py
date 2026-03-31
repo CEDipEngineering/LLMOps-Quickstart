@@ -55,9 +55,8 @@ extra_pip = agent_config["agent"].get("extra_pip_requirements", [])
 
 # The bundle variable llm_endpoint is authoritative (varies by target).
 # Fall back to agent_config.yml for local development.
-model_config_values = dict(agent_config.get("model_config", {}))
-if llm_endpoint:
-    model_config_values["llm_endpoint"] = llm_endpoint
+config_endpoint = agent_config.get("llm_endpoint", "")
+model_config_values = {"llm_endpoint": llm_endpoint or config_endpoint}
 
 print(f"Agent file:   {agent_file_path}")
 print(f"Model config: {model_config_values}")
