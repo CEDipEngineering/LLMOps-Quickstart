@@ -82,7 +82,7 @@ display(df)
 # COMMAND ----------
 
 result_df = spark.createDataFrame(df)
-result_df.write.mode("overwrite").saveAsTable(f"{catalog_name}.{schema_name}.{output_table}")
+result_df.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable(f"{catalog_name}.{schema_name}.{output_table}")
 
 print(f"Results written to {catalog_name}.{schema_name}.{output_table}")
 print(f"Row count: {len(df)}")
